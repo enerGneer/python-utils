@@ -32,3 +32,34 @@ yt-dlp 라이브러리 사용.
 - ytb-proto : 처음으로 제작해 본 가장 간단한 버전.
 - ytb-BAK : yt-dlp의 썸네일 다운로드 기능을 사용하려 했는데 간헐적으로 실패하는 바람에 일단 백업.
 - ytb : 최종 버전. mutagen 라이브러리를 이용하는 방식으로 우회함.
+
+## 의존성
+
+yt-dlp, mutagen.
+ffmpeg를 별도 설치 필요.
+아래 명령어로 환경설정까지 가능.
+
+```shell
+# 최신 ffmpeg 릴리즈 zip 다운로드 (공식 static build)
+$zipUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+$zipPath = "$env:USERPROFILE\Downloads\ffmpeg.zip"
+$extractPath = "$env:USERPROFILE\ffmpeg"
+
+Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
+Expand-Archive -Path $zipPath -DestinationPath $extractPath
+
+# bin 폴더 실제 경로 (폴더명에 버전번호가 있음)
+$binPath = Get-ChildItem "$extractPath\ffmpeg-*" -Directory | Select-Object -First 1 | ForEach-Object { "$($_.FullName)\bin" }
+
+# 사용자 환경변수 PATH에 bin 추가
+$envPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
+if ($envPath -notlike "*$binPath*") {
+    [System.Environment]::SetEnvironmentVariable("Path", "$envPath;$binPath", "User")
+    Write-Host "PATH에 $binPath 추가 완료. 새 콘솔을 열어야 적용됩니다."
+} else {
+    Write-Host "이미 PATH에 등록되어 있습니다."
+}
+
+# 완료 안내
+Write-Host "ffmpeg 설치 및 환경변수 등록이 완료되었습니다."
+```
