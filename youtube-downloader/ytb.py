@@ -57,14 +57,13 @@ class YouTubeDownloader:
 
     def _progress_hook(self, d: Dict[str, Any]):
         now = time.time()
-        # 0.2초 당 한 번만 갱신
         if now - self._last_time < 0.2:
             return
         self._last_time = now
 
         status = d.get('status')
         if status == 'downloading':
-            fn = os.path.basename(d.get('filename', ''))
+            fn = os.path.basename(d.get('filename') or '')
             if fn != self._cur_file:
                 self._cur_file = fn
                 if self._printed:
@@ -72,21 +71,34 @@ class YouTubeDownloader:
                 print(f"📥 다운로드 중: {fn}")
                 self._printed = False
 
-            downloaded = d.get('downloaded_bytes', 0)
-            total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
-            speed = d.get('speed', 0)
-            eta   = d.get('eta', 0)
+            # ✅ None-safe 취득
+            downloaded = d.get('downloaded_bytes') or 0
+            total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
+            speed = d.get('speed') or 0.0
+            eta   = d.get('eta') or 0
 
             if total:
-                percent = downloaded / total * 100
+                try:
+                    percent = downloaded / total * 100
+                except ZeroDivisionError:
+                    percent = 0.0
+
                 bar_len = 30
-                filled = int(bar_len * downloaded / total)
+                filled = int(bar_len * (downloaded / total)) if total else 0
                 bar = '█' * filled + '░' * (bar_len - filled)
+
                 dl_mb = downloaded / (1024 ** 2)
                 tot_mb = total / (1024 ** 2)
                 speed_str = f"{speed/1024/1024:.1f}MB/s" if speed else "--MB/s"
-                eta_m = int(eta // 60); eta_s = int(eta % 60)
-                eta_str = f"{eta_m}:{eta_s:02d}" if eta else "--:--"
+
+                # ✅ eta None/비수치 방어
+                try:
+                    eta_m = int(eta // 60)
+                    eta_s = int(eta % 60)
+                    eta_str = f"{eta_m}:{eta_s:02d}"
+                except Exception:
+                    eta_str = "--:--"
+
                 line = f"\r[{bar}] {percent:5.1f}% | {dl_mb:6.1f}/{tot_mb:6.1f}MB | {speed_str} | {eta_str}"
                 print(line, end='', flush=True)
                 self._printed = True
@@ -99,8 +111,8 @@ class YouTubeDownloader:
         elif status == 'finished':
             if self._printed:
                 print()
-            fn = os.path.basename(d.get('filename', ''))
-            size = d.get('total_bytes', 0)
+            fn = os.path.basename(d.get('filename') or '')
+            size = d.get('total_bytes') or 0
             size_str = f" ({size/1024/1024:.1f}MB)" if size else ""
             print(f"✅ 완료: {fn}{size_str}")
             self._printed = False
